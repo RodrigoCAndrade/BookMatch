@@ -1,0 +1,50 @@
+# Diretório de dados
+data/
+
+# Arquivos de compilação
+*.o
+*.obj
+*.exe
+*.out
+*.dll
+*.so
+*.dylib
+
+# Diretórios de build
+build/
+bin/
+Debug/
+Release/
+x64/
+x86/
+
+# Arquivos de IDE
+.vs/
+.vscode/
+*.user
+*.suo
+*.sln.docstates
+*.vcxproj.filters
+*.vcxproj.user
+
+# Arquivos de CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Arquivos de cache e logs
+*.log
+*.tlog
+*.idb
+*.pdb
+*.ilk
+*.aps
+*.pch
