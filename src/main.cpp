@@ -10,9 +10,9 @@
 #include <iostream>
 #include <string>
 #include <windows.h>
-#include "book.h"
-#include "user.h"
-#include "data.h"
+//#include "Book/book.h"
+#include "User/user.h"
+#include "Data/data.h"
 
 using namespace std;
 
@@ -75,7 +75,12 @@ void logar(string username) {
  * @return 0 se executado com sucesso
  */
 int main() {
-    Data data;  // Gerenciador de dados
+    // Gerenciador de dados
+    Data usersData = Data("users.txt");
+    Data booksData = Data("books.txt");
+    Data historyData = Data("history.txt");
+    Data ratingsData = Data("ratings.txt");
+
     string username;
     string password;
 
@@ -84,9 +89,9 @@ int main() {
         cout << endl << "-> Usuário: ";
         cin >> username;
 
-        User user(username);
+        User user(username, usersData);
 
-        int hasUser = user.hasUser(data);
+        int hasUser = user.hasUser();
         // Se o usuário não for cadastrado, inicia o cadastro
         if (hasUser == 0) {
             cout << username << ", percebi que você não está cadastrado em nosso sistema. Por favor, crie uma senha:" << endl;
@@ -95,7 +100,7 @@ int main() {
             cin >> password;
 
             user.hashPassword(password);
-            user.saveUser(data);
+            user.saveUser();
         } else if (hasUser == 1) {
             cout << "-> Senha: ";
             cin >> password;

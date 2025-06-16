@@ -8,18 +8,29 @@
  */
 
 #include <iostream>
+#include <openssl/evp.h>
 #include <openssl/sha.h>
 #include <sstream>
 #include <iomanip>
 #include <vector>
-#include "user.h"
-#include "data.h"
+#include <stdexcept>
+#include "../User/user.h"
+#include "../Data/data.h"
 
 /**
  * @brief Construtor da classe User
  * @param username Nome do usuário
+ * @param data Gerenciador de dados
  */
-User::User(string username) : username(username) {
+User::User(string username, Data& data) : username(username), data(data) {
+}
+
+/**
+ * @brief Obtém o gerenciador de dados
+ * @return Referência para o gerenciador de dados
+ */
+Data& User::getData() {
+    return data;
 }
 
 /**
@@ -27,7 +38,7 @@ User::User(string username) : username(username) {
  * @return Nome do usuário
  */
 string User::getUsername() {
-    return User::password;
+    return username;
 }
 
 /**
@@ -35,7 +46,7 @@ string User::getUsername() {
  * @return Senha criptografada
  */
 string User::getPassword() {
-    return User::password;
+    return password;
 }
 
 /**
@@ -43,7 +54,7 @@ string User::getPassword() {
  * @param username Novo nome de usuário
  */
 void User::setUsername(string username) {
-    User::username = username;
+    this->username = username;
 }
 
 /**
@@ -51,31 +62,44 @@ void User::setUsername(string username) {
  * @param password Nova senha
  */
 void User::setPassword(string password) {
-    User::password = password;
+    this->password = password;
 }
 
 /**
  * @brief Criptografa a senha usando SHA-512
  * @param password Senha a ser criptografada
- *
- * A senha é criptografada usando o algoritmo SHA-512 e armazenada
- * em formato hexadecimal.
  */
 void User::hashPassword(string password) {
     // Buffer para armazenar o hash SHA-512 (64 bytes)
     unsigned char hash[SHA512_DIGEST_LENGTH];
 
-    // Cria o contexto SHA-512
-    SHA512_CTX sha512;
+    // Cria o contexto para o hash
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    if (!ctx) {
+        throw runtime_error("Failed to create hash context");
+    }
 
-    // Inicializa o contexto SHA-512
-    SHA512_Init(&sha512);
+    // Inicializa o contexto com SHA-512
+    if (!EVP_DigestInit_ex(ctx, EVP_sha512(), NULL)) {
+        EVP_MD_CTX_free(ctx);
+        throw runtime_error("Failed to initialize hash context");
+    }
 
     // Adiciona a senha ao contexto para ser processada
-    SHA512_Update(&sha512, password.c_str(), password.length());
+    if (!EVP_DigestUpdate(ctx, password.c_str(), password.length())) {
+        EVP_MD_CTX_free(ctx);
+        throw runtime_error("Failed to update hash context");
+    }
 
     // Finaliza o cálculo do hash e armazena o resultado no buffer 'hash'
-    SHA512_Final(hash, &sha512);
+    unsigned int len;
+    if (!EVP_DigestFinal_ex(ctx, hash, &len)) {
+        EVP_MD_CTX_free(ctx);
+        throw runtime_error("Failed to finalize hash");
+    }
+
+    // Libera o contexto
+    EVP_MD_CTX_free(ctx);
 
     // Converte o hash binário para uma string hexadecimal
     std::stringstream ss;
@@ -90,13 +114,10 @@ void User::hashPassword(string password) {
 
 /**
  * @brief Verifica se o usuário existe no sistema
- * @param data Referência para o gerenciador de dados
  * @return 1 se o usuário existe, 0 caso contrário
  */
-int User::hasUser(Data& data) {
-    string filename = data.getUserDataFilename();
-
-    if (data.openFile(filename, ios::in)) {
+int User::hasUser() {
+    if (data.openFile(ios::in)) {
         string line;
         while (data.getLine(line)) {
             size_t pos = line.find(':');
@@ -115,13 +136,10 @@ int User::hasUser(Data& data) {
 
 /**
  * @brief Carrega os dados do usuário do arquivo
- * @param data Referência para o gerenciador de dados
  * @return 1 se os dados foram carregados com sucesso, 0 caso contrário
  */
-int User::loadUser(Data& data) {
-    string filename = data.getUserDataFilename();
-
-    if (data.openFile(filename, ios::in)) {
+int User::loadUser() {
+    if (data.openFile(ios::in)) {
         string line;
         while (data.getLine(line)) {
             size_t pos = line.find(':');
@@ -141,18 +159,15 @@ int User::loadUser(Data& data) {
 
 /**
  * @brief Salva os dados do usuário no arquivo
- * @param data Referência para o gerenciador de dados
  * @return 1 se os dados foram salvos com sucesso, 0 caso contrário
  *
  * O método mantém os dados de outros usuários intactos e
  * atualiza apenas os dados do usuário atual.
  */
-int User::saveUser(Data& data) {
-    string filename = data.getUserDataFilename();
-
+int User::saveUser() {
     // Primeiro, lê todos os usuários existentes
     vector<string> users;
-    if (data.openFile(filename, ios::in)) {
+    if (data.openFile(ios::in)) {
         string line;
         while (data.getLine(line)) {
             size_t pos = line.find(':');
@@ -170,7 +185,7 @@ int User::saveUser(Data& data) {
     users.push_back(username + ":" + password);
 
     // Salva todos os usuários de volta
-    if (data.openFile(filename, ios::out)) {
+    if (data.openFile(ios::out)) {
         for (const string& user : users) {
             data.writeToFile(user + "\n");
         }

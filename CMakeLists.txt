@@ -10,8 +10,8 @@ include_directories(${OPENSSL_INCLUDE_DIR})
 # Adicionar os arquivos fonte
 set(SOURCES
     src/main.cpp
-    src/user.cpp
-    src/data.cpp
+    src/User/user.cpp
+    src/Data/data.cpp
 )
 
 # Criar o executável

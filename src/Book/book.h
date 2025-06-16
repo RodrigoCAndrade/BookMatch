@@ -67,9 +67,9 @@ public:
     void setRating(float rating);
 
     // Data management
-    int saveBook(Data& data);
-    int loadBook(Data& data, string isbn);
-    int hasBook(Data& data, string isbn);
+    int saveBook();
+    int loadBook(string isbn);
+    int hasBook(string isbn);
 };
 
 #endif
