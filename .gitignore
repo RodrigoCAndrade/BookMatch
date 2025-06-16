@@ -1,5 +1,5 @@
 # Diretório de dados
-data/
+database/
 
 # Arquivos de compilação
 *.o
