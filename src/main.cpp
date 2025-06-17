@@ -1,40 +1,179 @@
 /**
- * @file main.cpp
- * @brief Arquivo principal do sistema BookMatch
- * @author Rodrigo Andrade
- * @date 11.06.2025
- * @version 1.0
- * @license MIT
- */
+ * @file: main.cpp
+ * @author: Rodrigo Andrade
+ * @date: 16 Jun 2025
+ * @description: Classe principal para a aplicação BookMatch.
+ * @version: 2.0
+ * @license: MIT
+ * @language: C++
+ * @github: https://github.com/RodrigoCAndrade/BookMatch
+*/
+
 
 #include <iostream>
 #include <string>
-#include <windows.h>
-//#include "Book/book.h"
+#include <sstream>
+#include "Book/book.h"
 #include "User/user.h"
-#include "Data/data.h"
+#include "Data/data_manager.h"
 
-using namespace std;
+// Bloco para configurar o terminal do Windows para aceitar caracteres UTF-8
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+// --- Constantes para Cores ANSI ---
+// Usadas para formatar a saída do console de forma portável.
+const std::string RESET = "\033[0m";
+const std::string BOLD = "\033[1m";
+const std::string RED = "\033[31m";
+const std::string GREEN = "\033[32m";
+const std::string YELLOW = "\033[33m";
+const std::string CYAN = "\033[36m";
 
 /**
- * @brief Define a cor do texto no console
- * @param color Código da cor a ser definida
+ * @brief Configura o console para a saída de caracteres UTF-8.
+ * @note Esta função é específica para o sistema operacional Windows.
  */
-void setColor(int color) {
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
+void setupConsole();
+
+/**
+ * @brief Exibe o menu principal com a arte ASCII do BookMatch.
+ */
+void displayMainMenu();
+
+/**
+ * @brief Exibe uma mensagem de boas-vindas para um utilizador autenticado.
+ * @param username O nome de utilizador a ser exibido.
+ */
+void displayWelcomeMessage(const std::string& username);
+
+/**
+ * @brief Ponto de entrada principal da aplicação.
+ * @return 0 em caso de sucesso, 1 em caso de erro.
+ */
+int main() {
+    setupConsole();
+
+    // --- Inicialização dos Gestores de Dados ---
+    DataManager userDataManager("users.txt");
+    DataManager booksDataManager("books.txt");
+    DataManager historyDataManager("history.txt");
+    DataManager ratingsDataManager("ratings.txt");
+
+    displayMainMenu();
+
+    std::string username;
+    std::string password;
+    bool isLoggedIn = false;
+
+    // --- Loop de Autenticação de Utilizador ---
+    User currentUser(userDataManager);
+    while (!isLoggedIn) {
+        std::cout << std::endl << YELLOW << "-> Usuário: " << RESET;
+        std::getline(std::cin >> std::ws, username);
+        currentUser.setUsername(username);
+
+        if (!currentUser.exists()) {
+            std::cout << username << ", percebi que você não está cadastrado em nosso sistema. Por favor, crie uma senha." << std::endl;
+            std::cout << std::endl << YELLOW << "-> Crie uma senha: " << RESET;
+            std::getline(std::cin >> std::ws, password);
+            currentUser.hashPassword(password);
+
+            if (!currentUser.save()) {
+                std::cout << RED << BOLD << "Ocorreu um erro crítico ao salvar o usuário. O programa será encerrado." << RESET << std::endl;
+                return 1;
+            }
+            std::cout << GREEN << "Usuário cadastrado com sucesso!" << RESET << std::endl;
+            isLoggedIn = true;
+        } else {
+            currentUser.load();
+            std::string storedPasswordHash = currentUser.getPasswordHash();
+
+            User validator(userDataManager); // Usado apenas para validar a senha inserida
+            bool passwordCorrect = false;
+            while (!passwordCorrect) {
+                std::cout << YELLOW << "-> Senha: " << RESET;
+                std::getline(std::cin >> std::ws, password);
+                validator.hashPassword(password);
+                if (validator.getPasswordHash() == storedPasswordHash) {
+                    passwordCorrect = true;
+                    isLoggedIn = true;
+                } else {
+                    std::cout << RED << "Senha incorreta, tente novamente." << RESET << std::endl;
+                }
+            }
+        }
+    }
+
+    displayWelcomeMessage(currentUser.getUsername());
+
+    // --- Manipulador de Comandos ---
+    std::string userInput;
+    bool isRunning = true;
+    while (isRunning) {
+        std::cout << std::endl << YELLOW << "> " << RESET;
+        // Usa getline para ler a linha inteira, permitindo comandos com argumentos
+        std::getline(std::cin >> std::ws, userInput);
+
+        if (userInput.empty()) continue;
+
+        std::stringstream ss(userInput);
+        std::string command, args;
+        ss >> command;
+        std::getline(ss, args);
+
+        // Remove espaços em branco à esquerda dos argumentos
+        if (!args.empty() && args[0] == ' ') {
+            args.erase(0, 1);
+        }
+
+        if (command == "sair" || command == "exit") {
+            isRunning = false;
+        } else if (command == "info") {
+            if (args.empty()) {
+                std::cout << RED << "Uso: info <ISBN>" << RESET << std::endl;
+                continue;
+            }
+            Book book(args, booksDataManager);
+            if (!book.exists()) {
+                std::cout << RED << "O livro com o ISBN '" << book.getIsbn() << "' não foi encontrado." << RESET << std::endl;
+            } else {
+                book.load();
+                std::cout << BOLD << "Detalhes do livro: " << RESET << std::endl;
+                std::cout << "    * ISBN: " << book.getIsbn() << std::endl;
+                std::cout << "    * Título: " << book.getTitle() << std::endl;
+                std::cout << "    * Autor: " << book.getAuthor() << std::endl;
+                std::cout << "    * Ano de Publicação: " << book.getYear() << std::endl;
+                std::cout << "    * Editora: " << book.getPublisher() << std::endl;
+                std::cout << "    * Avaliação: " << book.getRating() << "/5.0" << std::endl;
+            }
+        } else {
+            std::cout << RED << "Comando '" << command << "' desconhecido." << RESET << std::endl;
+        }
+    }
+
+    std::cout << std::endl << GREEN << "Obrigado por utilizar o BookMatch." << RESET << std::endl;
+    return 0;
 }
 
-/**
- * @brief Exibe o menu principal do sistema
- *
- * Mostra o logo ASCII do BookMatch e solicita o nome de usuário
- */
-void displayMenu() {
-    system("cls"); // Limpa a tela
+void setupConsole() {
+    #ifdef _WIN32
+        // Define a página de código do console de saída para UTF-8 no Windows
+        SetConsoleOutputCP(CP_UTF8);
+        // Define a página de código de entrada para UTF-8 no Windows
+        SetConsoleCP(CP_UTF8);
+    #endif
+}
 
-    // ASCII Art do BookMatch
-    setColor(11); // Ciano claro
-    cout << R"(
+void displayMainMenu() {
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
+
+    std::cout << CYAN << R"(
     $$$$$$$\   $$$$$$\   $$$$$$\  $$\   $$\
     $$  __$$\ $$  __$$\ $$  __$$\ $$ | $$  |
     $$ |  $$ |$$ /  $$ |$$ /  $$ |$$ |$$  /
@@ -52,64 +191,12 @@ void displayMenu() {
       $$ |\$  /$$ |$$ |  $$ |  $$ |   $$ |  $$\ $$ |  $$ |
       $$ | \_/ $$ |$$ |  $$ |  $$ |   \$$$$$$  |$$ |  $$ |
       \__|     \__|\__|  \__|  \__|    \______/ \__|  \__|
-      )" << endl << endl;
+      )" << RESET << std::endl << std::endl;
 
-    setColor(14); // Amarelo
-    cout << "Bem-vindo ao BookMatch!" << endl << endl;
-
-    setColor(10); // Verde
-    cout << "Digite seu nome de usuário:" << endl;
-    setColor(7); // Reset para cor padrão do terminal
+    std::cout << YELLOW << BOLD << "Bem-vindo ao BookMatch!" << RESET << std::endl << std::endl;
+    std::cout << GREEN << "Digite seu nome de usuário para começar:" << RESET << std::endl;
 }
 
-/**
- * @brief Exibe mensagem de boas-vindas ao usuário
- * @param username Nome do usuário logado
- */
-void logar(string username) {
-    cout << "Bem-vindo, " << username << "!";
-}
-
-/**
- * @brief Função principal do programa
- * @return 0 se executado com sucesso
- */
-int main() {
-    // Gerenciador de dados
-    Data usersData = Data("users.txt");
-    Data booksData = Data("books.txt");
-    Data historyData = Data("history.txt");
-    Data ratingsData = Data("ratings.txt");
-
-    string username;
-    string password;
-
-    while (true) {
-        displayMenu();
-        cout << endl << "-> Usuário: ";
-        cin >> username;
-
-        User user(username, usersData);
-
-        int hasUser = user.hasUser();
-        // Se o usuário não for cadastrado, inicia o cadastro
-        if (hasUser == 0) {
-            cout << username << ", percebi que você não está cadastrado em nosso sistema. Por favor, crie uma senha:" << endl;
-            cout << endl << "-> Crie uma senha: ";
-
-            cin >> password;
-
-            user.hashPassword(password);
-            user.saveUser();
-        } else if (hasUser == 1) {
-            cout << "-> Senha: ";
-            cin >> password;
-            // TODO: Implementar verificação de senha
-        } else {
-            cout << "Ops! Ocorreu um erro inesperado. Por favor, contate um administrador." << endl;
-        }
-    }
-
-    logar(username);
-    return 0;
+void displayWelcomeMessage(const std::string& username) {
+    std::cout << GREEN << "Bem-vindo, " << BOLD << username << "!" << RESET << std::endl;
 }

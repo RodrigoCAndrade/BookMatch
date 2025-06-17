@@ -1,96 +1,70 @@
 /**
- * @file user.h
- * @brief Classe responsável pelo gerenciamento de usuários do sistema
- * @author Rodrigo Andrade
- * @date 2025
- * @version 1.0
- * @license MIT
- */
+ * @file: user.h
+ * @author: Rodrigo Andrade
+ * @date: 16 Jun 2025
+ * @description: Definição da classe User para gerenciar dados e autenticação de usuários.
+ * @version: 2.0
+ * @license: MIT
+ * @language: C++
+ * @github: https://github.com/RodrigoCAndrade/BookMatch
+*/
 
 #ifndef USER_H
 #define USER_H
 
 #include <string>
-#include "../Data/data.h"
-
-using namespace std;
+#include "../Data/data_manager.h"
 
 /**
  * @class User
- * @brief Gerencia informações e operações relacionadas aos usuários
+ * @brief Gerencia as informações e operações de um usuário.
  *
- * Esta classe é responsável por:
- * - Armazenar dados do usuário (nome e senha)
- * - Gerenciar autenticação
- * - Persistir dados do usuário
+ * Responsável por armazenar dados do usuário, gerar hashes de senha e
+ * persistir as informações usando um DataManager.
  */
 class User {
-    private:
-        string username;    // Nome do usuário
-        string password;    // Senha criptografada do usuário
-        Data& data;        // Referência para o gerenciador de dados
+private:
+    std::string username;
+    std::string passwordHash;
+    DataManager& dataManager;
 
-    public:
-        /**
-         * @brief Construtor da classe User
-         * @param username Nome do usuário
-         * @param data Gerenciador de dados
-         */
-        User(string username, Data& data);
+public:
+    /**
+     * @brief Construtor principal para um objeto User.
+     * @param dataManager Uma referência ao gerenciador de dados para persistência.
+     */
+    explicit User(DataManager& dataManager);
 
-        /**
-         * @brief Obtém o gerenciador de dados
-         * @return Referência para o gerenciador de dados
-         */
-        Data& getData();
+    /**
+     * @brief Gera o hash de uma senha em texto plano usando SHA-512.
+     * @param plainPassword A senha a ser processada.
+     * @note Por segurança máxima, considere usar Argon2 ou scrypt em vez de SHA-512.
+     */
+    void hashPassword(const std::string& plainPassword);
 
-        /**
-         * @brief Obtém o nome do usuário
-         * @return Nome do usuário
-         */
-        string getUsername();
+    /**
+     * @brief Salva os dados do usuário (username e hash da senha) no arquivo.
+     * @return true se a operação foi bem-sucedida, false caso contrário.
+     */
+    bool save();
 
-        /**
-         * @brief Define o nome do usuário
-         * @param username Novo nome do usuário
-         */
-        void setUsername(string username);
+    /**
+     * @brief Carrega os dados do usuário do arquivo para este objeto.
+     * @return true se o usuário foi encontrado e carregado, false caso contrário.
+     */
+    bool load();
 
-        /**
-         * @brief Obtém a senha do usuário
-         * @return Senha criptografada
-         */
-        string getPassword();
+    /**
+     * @brief Verifica se um usuário com o 'username' atual existe no arquivo.
+     * @return true se o usuário existe, false caso contrário.
+     */
+    bool exists();
 
-        /**
-         * @brief Define a senha do usuário
-         * @param password Nova senha
-         */
-        void setPassword(string password);
-
-        /**
-         * @brief Criptografa a senha usando SHA-512
-         * @param password Senha a ser criptografada
-         */
-        void hashPassword(string password);
-
-        /**
-         * @brief Salva os dados do usuário
-         * @return 1 se salvou com sucesso, 0 caso contrário
-         */
-        int saveUser();
-
-        /**
-         * @brief Verifica se o usuário existe
-         * @return 1 se existe, 0 se não existe
-         */
-        int hasUser();
-
-        /**
-         * @brief Carrega os dados do usuário
-         * @return 1 se carregou com sucesso, 0 caso contrário
-         */
-        int loadUser();
+    // --- Getters & Setters ---
+    std::string getUsername() const;
+    void setUsername(const std::string& username);
+    std::string getPasswordHash() const;
+    void setPasswordHash(const std::string& hash);
 };
 
-#endif
+#endif // USER_H

@@ -1,196 +1,146 @@
 /**
- * @file user.cpp
- * @brief Implementação da classe User para gerenciamento de usuários
- * @author Rodrigo Andrade
- * @date 11.06.2025
- * @version 1.0
- * @license MIT
- */
+ * @file: user.cpp
+ * @author: Rodrigo Andrade
+ * @date: 16 Jun 2025
+ * @description: Implementação da classe User.
+ * @version: 2.0
+ * @license: MIT
+ * @language: C++
+ * @github: https://github.com/RodrigoCAndrade/BookMatch
+*/
 
+#include "user.h"
 #include <iostream>
-#include <openssl/evp.h>
-#include <openssl/sha.h>
+#include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <vector>
 #include <stdexcept>
-#include "../User/user.h"
-#include "../Data/data.h"
+#include <filesystem>
+#include <openssl/evp.h>
+#include <openssl/sha.h>
 
 /**
- * @brief Construtor da classe User
- * @param username Nome do usuário
- * @param data Gerenciador de dados
+ * @brief Construtor principal da classe User.
+ * @param dataManager Uma referência ao gerenciador de dados.
  */
-User::User(string username, Data& data) : username(username), data(data) {
-}
+User::User(DataManager& dataManager) : dataManager(dataManager) {}
+
+// --- Getters & Setters ---
+
+std::string User::getUsername() const { return this->username; }
+void User::setUsername(const std::string& username) { this->username = username; }
+std::string User::getPasswordHash() const { return this->passwordHash; }
+void User::setPasswordHash(const std::string& hash) { this->passwordHash = hash; }
 
 /**
- * @brief Obtém o gerenciador de dados
- * @return Referência para o gerenciador de dados
+ * @brief Gera o hash de uma senha em texto plano usando SHA-512.
+ * @param plainPassword A senha a ser processada.
  */
-Data& User::getData() {
-    return data;
-}
-
-/**
- * @brief Obtém o nome do usuário
- * @return Nome do usuário
- */
-string User::getUsername() {
-    return username;
-}
-
-/**
- * @brief Obtém a senha do usuário
- * @return Senha criptografada
- */
-string User::getPassword() {
-    return password;
-}
-
-/**
- * @brief Define o nome do usuário
- * @param username Novo nome de usuário
- */
-void User::setUsername(string username) {
-    this->username = username;
-}
-
-/**
- * @brief Define a senha do usuário
- * @param password Nova senha
- */
-void User::setPassword(string password) {
-    this->password = password;
-}
-
-/**
- * @brief Criptografa a senha usando SHA-512
- * @param password Senha a ser criptografada
- */
-void User::hashPassword(string password) {
-    // Buffer para armazenar o hash SHA-512 (64 bytes)
+void User::hashPassword(const std::string& plainPassword) {
     unsigned char hash[SHA512_DIGEST_LENGTH];
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
 
-    // Cria o contexto para o hash
-    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    if (!ctx) {
-        throw runtime_error("Failed to create hash context");
+    if (!context || !EVP_DigestInit_ex(context, EVP_sha512(), NULL) ||
+        !EVP_DigestUpdate(context, plainPassword.c_str(), plainPassword.length())) {
+        EVP_MD_CTX_free(context);
+        throw std::runtime_error("Falha ao inicializar o contexto de hash SHA-512.");
     }
 
-    // Inicializa o contexto com SHA-512
-    if (!EVP_DigestInit_ex(ctx, EVP_sha512(), NULL)) {
-        EVP_MD_CTX_free(ctx);
-        throw runtime_error("Failed to initialize hash context");
+    unsigned int lengthOfHash = 0;
+    if (!EVP_DigestFinal_ex(context, hash, &lengthOfHash)) {
+        EVP_MD_CTX_free(context);
+        throw std::runtime_error("Falha ao finalizar o hash SHA-512.");
     }
 
-    // Adiciona a senha ao contexto para ser processada
-    if (!EVP_DigestUpdate(ctx, password.c_str(), password.length())) {
-        EVP_MD_CTX_free(ctx);
-        throw runtime_error("Failed to update hash context");
-    }
+    EVP_MD_CTX_free(context);
 
-    // Finaliza o cálculo do hash e armazena o resultado no buffer 'hash'
-    unsigned int len;
-    if (!EVP_DigestFinal_ex(ctx, hash, &len)) {
-        EVP_MD_CTX_free(ctx);
-        throw runtime_error("Failed to finalize hash");
-    }
-
-    // Libera o contexto
-    EVP_MD_CTX_free(ctx);
-
-    // Converte o hash binário para uma string hexadecimal
     std::stringstream ss;
-    for(int i = 0; i < SHA512_DIGEST_LENGTH; i++) {
-        // Converte cada byte para hexadecimal com 2 dígitos
+    for (unsigned int i = 0; i < lengthOfHash; ++i) {
         ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(hash[i]);
     }
-
-    // Armazena a senha criptografada
-    setPassword(ss.str());
+    this->passwordHash = ss.str();
 }
 
 /**
- * @brief Verifica se o usuário existe no sistema
- * @return 1 se o usuário existe, 0 caso contrário
+ * @brief Verifica se um usuário com o 'username' atual existe no arquivo.
+ * @return true se o usuário existe, false caso contrário.
  */
-int User::hasUser() {
-    if (data.openFile(ios::in)) {
-        string line;
-        while (data.getLine(line)) {
-            size_t pos = line.find(':');
-            if (pos != string::npos) {
-                string storedUsername = line.substr(0, pos);
-                if (storedUsername == username) {
-                    data.closeFile();
-                    return 1;
-                }
-            }
-        }
-        data.closeFile();
+bool User::exists() {
+    if (!dataManager.open(std::ios::in)) {
+        return false;
     }
-    return 0;
+
+    std::string line;
+    bool found = false;
+    while (dataManager.getLine(line)) {
+        size_t pos = line.find(':');
+        if (pos != std::string::npos && line.substr(0, pos) == this->username) {
+            found = true;
+            break;
+        }
+    }
+    dataManager.close();
+    return found;
 }
 
 /**
- * @brief Carrega os dados do usuário do arquivo
- * @return 1 se os dados foram carregados com sucesso, 0 caso contrário
+ * @brief Carrega os dados do usuário do arquivo para este objeto.
+ * @return true se o usuário foi encontrado e carregado, false caso contrário.
  */
-int User::loadUser() {
-    if (data.openFile(ios::in)) {
-        string line;
-        while (data.getLine(line)) {
-            size_t pos = line.find(':');
-            if (pos != string::npos) {
-                string storedUsername = line.substr(0, pos);
-                if (storedUsername == username) {
-                    password = line.substr(pos + 1);
-                    data.closeFile();
-                    return 1;
-                }
-            }
-        }
-        data.closeFile();
+bool User::load() {
+    if (!dataManager.open(std::ios::in)) {
+        return false;
     }
-    return 0;
+
+    std::string line;
+    bool found = false;
+    while (dataManager.getLine(line)) {
+        size_t pos = line.find(':');
+        if (pos != std::string::npos && line.substr(0, pos) == this->username) {
+            this->passwordHash = line.substr(pos + 1);
+            found = true;
+            break;
+        }
+    }
+    dataManager.close();
+    return found;
 }
 
 /**
- * @brief Salva os dados do usuário no arquivo
- * @return 1 se os dados foram salvos com sucesso, 0 caso contrário
- *
- * O método mantém os dados de outros usuários intactos e
- * atualiza apenas os dados do usuário atual.
+ * @brief Salva os dados do usuário (username e hash da senha) no arquivo.
+ * @return true se a operação foi bem-sucedida, false caso contrário.
  */
-int User::saveUser() {
-    // Primeiro, lê todos os usuários existentes
-    vector<string> users;
-    if (data.openFile(ios::in)) {
-        string line;
-        while (data.getLine(line)) {
+bool User::save() {
+    std::string originalPath = dataManager.getFullPath();
+    std::string tempPath = originalPath + ".tmp";
+
+    std::ofstream tempFile(tempPath);
+    if (!tempFile.is_open()) {
+        std::cerr << "Erro: Nao foi possivel criar o arquivo temporario." << std::endl;
+        return false;
+    }
+
+    std::ifstream originalFile(originalPath);
+    if (originalFile.is_open()) {
+        std::string line;
+        while (std::getline(originalFile, line)) {
             size_t pos = line.find(':');
-            if (pos != string::npos) {
-                string storedUsername = line.substr(0, pos);
-                if (storedUsername != username) {
-                    users.push_back(line);
-                }
+            if (pos == std::string::npos || line.substr(0, pos) != this->username) {
+                tempFile << line << std::endl;
             }
         }
-        data.closeFile();
+    }
+    originalFile.close();
+
+    tempFile << this->username << ":" << this->passwordHash << std::endl;
+    tempFile.close();
+
+    try {
+        std::filesystem::rename(tempPath, originalPath);
+    } catch (const std::filesystem::filesystem_error& e) {
+        std::cerr << "Erro de Filesystem ao renomear: " << e.what() << std::endl;
+        return false;
     }
 
-    // Adiciona o usuário atual
-    users.push_back(username + ":" + password);
-
-    // Salva todos os usuários de volta
-    if (data.openFile(ios::out)) {
-        for (const string& user : users) {
-            data.writeToFile(user + "\n");
-        }
-        data.closeFile();
-        return 1;
-    }
-    return 0;
+    return true;
 }

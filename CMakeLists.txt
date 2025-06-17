@@ -1,21 +1,30 @@
-cmake_minimum_required(VERSION 3.10)
-project(BookMatch)
+cmake_minimum_required(VERSION 3.12)
+project(BookMatch LANGUAGES CXX)
 
-# Encontrar o OpenSSL
+# Padrão o C++ 20
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Constroi OPENSSL como estático
+set(OPENSSL_USE_STATIC_LIBS TRUE)
+
+# Busca o OpenSSL
 find_package(OpenSSL REQUIRED)
 
-# Adicionar os diretórios de include
+# Adiciona os diretórios de include
 include_directories(${OPENSSL_INCLUDE_DIR})
 
-# Adicionar os arquivos fonte
+# Adiciona os arquivos fonte
 set(SOURCES
     src/main.cpp
     src/User/user.cpp
-    src/Data/data.cpp
+    src/Data/data_manager.cpp
+    src/Book/book.cpp
 )
 
-# Criar o executável
+# Cria o executável
 add_executable(BookMatch ${SOURCES})
 
-# Linkar com OpenSSL
-target_link_libraries(BookMatch ${OPENSSL_LIBRARIES})
+# Linka com OpenSSL
+target_link_libraries(BookMatch OpenSSL::SSL OpenSSL::Crypto)

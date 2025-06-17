@@ -1,75 +1,82 @@
 /**
- * @file book.h
- * @brief Definição da classe Book para gerenciamento de livros
- * @author Rodrigo Andrade
- * @date 11.06.2025
- * @version 1.0
- * @license MIT
- */
+ * @file: book.h
+ * @author: Rodrigo Andrade
+ * @date: 16 Jun 2025
+ * @description: Definição da classe Book para gerenciar dados dos livros.
+ * @version: 2.0
+ * @license: MIT
+ * @language: C++
+ * @github: https://github.com/RodrigoCAndrade/BookMatch
+*/
 
 #ifndef BOOK_H
 #define BOOK_H
 
 #include <string>
-using namespace std;
+#include "../Data/data_manager.h"
 
 /**
  * @class Book
- * @brief Classe que representa um livro no sistema
+ * @brief Representa um livro e gerencia suas informações e persistência.
  *
- * Esta classe gerencia todas as informações relacionadas a um livro,
- * incluindo título, autor, ISBN, ano de publicação, editora, gênero,
- * descrição e avaliação.
+ * Armazena todos os atributos de um livro e usa um DataManager para
+ * carregar e salvar seus dados em um arquivo.
  */
 class Book {
 private:
-    string title;        // Título do livro
-    string author;       // Autor do livro
-    string isbn;         // ISBN do livro
-    int year;           // Ano de publicação
-    string publisher;    // Editora
-    string genre;        // Gênero literário
-    string description;  // Descrição do livro
-    float rating;        // Avaliação do livro (0-5)
+    std::string isbn;
+    std::string title;
+    std::string author;
+    int year;
+    std::string publisher;
+    std::string genre;
+    std::string description;
+    float rating;
+    DataManager& dataManager;
 
 public:
     /**
-     * @brief Construtor da classe Book
-     * @param title Título do livro
-     * @param author Autor do livro
-     * @param isbn ISBN do livro
-     * @param year Ano de publicação
-     * @param publisher Editora
-     * @param genre Gênero literário
-     * @param description Descrição do livro
-     * @param rating Avaliação do livro (0-5)
+     * @brief Construtor para um objeto Book.
+     * @param isbn O ISBN do livro, usado como identificador único.
+     * @param dataManager Uma referência ao gerenciador de dados para persistência.
      */
-    Book(string title, string author, string isbn, int year, string publisher, string genre, string description, float rating);
+    Book(const std::string& isbn, DataManager& dataManager);
 
-    // Getters
-    string getTitle();
-    string getAuthor();
-    string getIsbn();
-    int getYear();
-    string getPublisher();
-    string getGenre();
-    string getDescription();
-    float getRating();
+    /**
+     * @brief Salva os dados do livro no arquivo.
+     * @return true se a operação foi bem-sucedida, false caso contrário.
+     */
+    bool save();
 
-    // Setters
-    void setTitle(string title);
-    void setAuthor(string author);
-    void setIsbn(string isbn);
+    /**
+     * @brief Carrega os dados do livro do arquivo para este objeto.
+     * @return true se o livro foi encontrado e carregado, false caso contrário.
+     */
+    bool load();
+
+    /**
+     * @brief Verifica se um livro com o ISBN atual existe no arquivo.
+     * @return true se o livro existe, false caso contrário.
+     */
+    bool exists();
+
+    // --- Getters & Setters ---
+    std::string getIsbn() const;
+    void setIsbn(const std::string& isbn);
+    std::string getTitle() const;
+    void setTitle(const std::string& title);
+    std::string getAuthor() const;
+    void setAuthor(const std::string& author);
+    int getYear() const;
     void setYear(int year);
-    void setPublisher(string publisher);
-    void setGenre(string genre);
-    void setDescription(string description);
+    std::string getPublisher() const;
+    void setPublisher(const std::string& publisher);
+    std::string getGenre() const;
+    void setGenre(const std::string& genre);
+    std::string getDescription() const;
+    void setDescription(const std::string& description);
+    float getRating() const;
     void setRating(float rating);
-
-    // Data management
-    int saveBook();
-    int loadBook(string isbn);
-    int hasBook(string isbn);
 };
 
-#endif
+#endif // BOOK_H
