@@ -13,14 +13,14 @@
 #define BOOK_H
 
 #include <string>
-#include "../Data/data_manager.h"
+#include <vector>
+#include "../DataManager/DataManager.h"
+
+using namespace std;
 
 /**
  * @class Book
  * @brief Representa um livro e gerencia suas informações e persistência.
- *
- * Armazena todos os atributos de um livro e usa um DataManager para
- * carregar e salvar seus dados em um arquivo.
  */
 class Book {
 private:
@@ -31,8 +31,9 @@ private:
     std::string publisher;
     std::string genre;
     std::string description;
+    vector<string> tags;
     float rating;
-    DataManager& dataManager;
+    DataManager &dataManager;
 
 public:
     /**
@@ -60,6 +61,12 @@ public:
      */
     bool exists();
 
+    /**
+     * @brief Remove o livro com o ISBN atual.
+     * @return true se removido, false caso contrário.
+     */
+    bool remove();
+
     // --- Getters & Setters ---
     std::string getIsbn() const;
     void setIsbn(const std::string& isbn);
@@ -77,6 +84,11 @@ public:
     void setDescription(const std::string& description);
     float getRating() const;
     void setRating(float rating);
+    bool setTags(vector<string> tags);
+    vector<string> getTags();
+    bool addTag(string &tag);
+    bool removeTag(string &tag);
+    bool display();
 };
 
 #endif // BOOK_H

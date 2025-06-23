@@ -1,23 +1,33 @@
 /**
  * @file: book.cpp
  * @author: Rodrigo Andrade
- * @date: 16 Jun 2025
+ * @date: 23 Jun 2025
  * @description: Implementação da classe Book.
- * @version: 2.0
+ * @version: 2.1
  * @license: MIT
  * @language: C++
  * @github: https://github.com/RodrigoCAndrade/BookMatch
-*/
+ */
 
-#include "book.h"
-#include <iostream>
-#include <vector>
-#include <string>
-#include <fstream>
-#include <sstream>
+#include "Book.h"
+
 #include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <nlohmann/json.hpp>
 #include <ranges>
+#include <sstream>
+#include <string>
 #include <string_view>
+#define byte win_byte_override
+#include <tabulate/table.hpp>
+#undef byte
+#include <vector>
+
+#include "../Utils/FormatAux.h"
+
+using json = nlohmann::json;
+using namespace tabulate;
 
 /**
  * @brief Construtor da classe Book.
@@ -38,11 +48,15 @@ void Book::setAuthor(const std::string& author) { this->author = author; }
 int Book::getYear() const { return this->year; }
 void Book::setYear(int year) { this->year = year; }
 std::string Book::getPublisher() const { return this->publisher; }
-void Book::setPublisher(const std::string& publisher) { this->publisher = publisher; }
+void Book::setPublisher(const std::string& publisher) {
+  this->publisher = publisher;
+}
 std::string Book::getGenre() const { return this->genre; }
 void Book::setGenre(const std::string& genre) { this->genre = genre; }
 std::string Book::getDescription() const { return this->description; }
-void Book::setDescription(const std::string& description) { this->description = description; }
+void Book::setDescription(const std::string& description) {
+  this->description = description;
+}
 float Book::getRating() const { return this->rating; }
 void Book::setRating(float rating) { this->rating = rating; }
 
@@ -50,24 +64,7 @@ void Book::setRating(float rating) { this->rating = rating; }
  * @brief Verifica se um livro com o ISBN atual existe no arquivo.
  * @return true se o livro existe, false caso contrário.
  */
-bool Book::exists() {
-    if (!dataManager.open(std::ios::in)) {
-        return false;
-    }
-
-    const std::string delimiter = "#;#";
-    std::string line;
-    bool found = false;
-    while (dataManager.getLine(line)) {
-        size_t pos = line.find(delimiter);
-        if (pos != std::string::npos && line.substr(0, pos) == this->isbn) {
-            found = true;
-            break;
-        }
-    }
-    dataManager.close();
-    return found;
-}
+bool Book::exists() { return dataManager.has(this->isbn); }
 
 /**
  * @brief Carrega os dados do livro do arquivo para este objeto.
@@ -75,38 +72,31 @@ bool Book::exists() {
  * @note Requer C++20 para std::views::split.
  */
 bool Book::load() {
-    if (!dataManager.open(std::ios::in)) {
-        return false;
+  json data = dataManager.load(this->isbn);
+  if (data.is_null() || data.empty()) return false;
+  this->title = data.value("title", "");
+  this->author = data.value("author", "");
+  this->publisher = data.value("publisher", "");
+  this->description = data.value("description", "");
+  this->genre = data.value("genre", "");
+  this->year = 0;
+  std::string date = data.value("date", "");
+  if (!date.empty()) {
+    for (char c : date) {
+      if (isdigit(c)) {
+        this->year = std::stoi(date.substr(date.find(c)));
+        break;
+      }
     }
-
-    std::string line;
-    const std::string_view delimiter = "#;#";
-    bool found = false;
-
-    while (dataManager.getLine(line)) {
-        // Verifica se a linha pertence ao livro antes de processá-la
-        if (line.rfind(this->isbn, 0) == 0) {
-            std::vector<std::string> parts;
-            for (const auto& part_view : line | std::views::split(delimiter)) {
-                parts.emplace_back(part_view.begin(), part_view.end());
-            }
-
-            if (parts.size() == 8) {
-                this->title = parts[1];
-                this->author = parts[2];
-                this->year = std::stoi(parts[3]);
-                this->publisher = parts[4];
-                this->genre = parts[5];
-                this->description = parts[6];
-                this->rating = std::stof(parts[7]);
-                found = true;
-                break;
-            }
-        }
+  }
+  // Carrega as tags
+  tags.clear();
+  if (data.contains("tags") && data["tags"].is_array()) {
+    for (const auto& tag : data["tags"]) {
+      if (tag.is_string()) tags.push_back(tag.get<std::string>());
     }
-
-    dataManager.close();
-    return found;
+  }
+  return true;
 }
 
 /**
@@ -114,44 +104,79 @@ bool Book::load() {
  * @return true se a operação foi bem-sucedida, false caso contrário.
  */
 bool Book::save() {
-    std::string originalPath = dataManager.getFullPath();
-    std::string tempPath = originalPath + ".tmp";
-    const std::string delimiter = "#;#";
+  json allBooks = dataManager.load("");
+  // Salva as tags como array
+  allBooks[this->isbn] = {{"title", this->title},
+                          {"author", this->author},
+                          {"date", std::to_string(this->year)},
+                          {"publisher", this->publisher},
+                          {"description", this->description},
+                          {"genre", this->genre},
+                          {"tags", this->tags}};
+  return dataManager.save(allBooks);
+}
 
-    std::ofstream tempFile(tempPath);
-    if (!tempFile.is_open()) {
-        std::cerr << "Erro: Nao foi possivel criar o arquivo temporario." << std::endl;
-        return false;
-    }
+/**
+ * @brief Remove o livro atual utilizando o ISBN.
+ * @return true se a remoção foi bem-sucedida, false caso contrário.
+ */
+bool Book::remove() { return dataManager.remove(this->isbn); }
 
-    std::ifstream originalFile(originalPath);
-    if (originalFile.is_open()) {
-        std::string line;
-        while (std::getline(originalFile, line)) {
-            size_t pos = line.find(delimiter);
-            if (pos == std::string::npos || line.substr(0, pos) != this->isbn) {
-                tempFile << line << std::endl;
-            }
-        }
-    }
-    originalFile.close();
+bool Book::setTags(vector<string> tags) {
+  this->tags = std::move(tags);
+  return true;
+}
 
-    tempFile << this->isbn << delimiter
-             << this->title << delimiter
-             << this->author << delimiter
-             << this->year << delimiter
-             << this->publisher << delimiter
-             << this->genre << delimiter
-             << this->description << delimiter
-             << this->rating << std::endl;
-    tempFile.close();
+vector<string> Book::getTags() { return this->tags; }
 
-    try {
-        std::filesystem::rename(tempPath, originalPath);
-    } catch (const std::filesystem::filesystem_error& e) {
-        std::cerr << "Erro de Filesystem ao renomear: " << e.what() << std::endl;
-        return false;
-    }
-
+bool Book::addTag(string& tag) {
+  // Evita duplicatas
+  if (std::find(tags.begin(), tags.end(), tag) == tags.end()) {
+    tags.push_back(tag);
     return true;
+  }
+  return false;
+}
+
+bool Book::removeTag(string& tag) {
+  auto it = std::find(tags.begin(), tags.end(), tag);
+  if (it != tags.end()) {
+    tags.erase(it);
+    return true;
+  }
+  return false;
+}
+
+bool Book::display() {
+  FormatAux formatAux = FormatAux();
+
+  Table details;
+  details.add_row({"Campo", "Valor"});
+  details.add_row({"ISBN", this->getIsbn()});
+  details.add_row({"Título", this->getTitle()});
+  details.add_row({"Autor", this->getAuthor()});
+  details.add_row({"Ano de Publicação", to_string(this->getYear())});
+  details.add_row({"Editora", this->getPublisher()});
+  details.add_row({"Tags", formatAux.join(this->getTags())});
+  stringstream rating;
+  rating << fixed << setprecision(1) << this->getRating() << "/5.0";
+  details.add_row({"Avaliação", rating.str()});
+
+  // Formatação
+  details.column(0)
+      .format()
+      .font_style({FontStyle::bold})
+      .font_color(Color::yellow);
+  details[0][0].format().font_align(FontAlign::center);
+  details[0][1].format().font_align(FontAlign::center);
+
+  details.format()
+      .border_top("─")
+      .border_bottom("─")
+      .border_left("│")
+      .border_right("│")
+      .column_separator("│");
+
+  cout << details << endl;
+  return true;
 }

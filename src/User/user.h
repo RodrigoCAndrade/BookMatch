@@ -1,9 +1,9 @@
 /**
- * @file: user.h
+ * @file: User.h
  * @author: Rodrigo Andrade
- * @date: 16 Jun 2025
+ * @date: 23 Jun 2025
  * @description: Definição da classe User para gerenciar dados e autenticação de usuários.
- * @version: 2.0
+ * @version: 2.1
  * @license: MIT
  * @language: C++
  * @github: https://github.com/RodrigoCAndrade/BookMatch
@@ -13,7 +13,7 @@
 #define USER_H
 
 #include <string>
-#include "../Data/data_manager.h"
+#include "../DataManager/DataManager.h"
 
 /**
  * @class User
@@ -26,7 +26,7 @@ class User {
 private:
     std::string username;
     std::string passwordHash;
-    DataManager& dataManager;
+    DataManager &dataManager;
 
 public:
     /**

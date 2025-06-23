@@ -48,3 +48,21 @@ desktop.ini
 *.ilk
 *.aps
 *.pch
+
+# Arquivos e pastas do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyt
+*.py.class
+
+# Ambiente virtual Python
+venv/
+.env/
+ENV/
+env/
+.venv/
+
+# Arquivos de desenvolvimento
+books.json
