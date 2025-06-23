@@ -65,6 +65,7 @@ bool History::add(string& isbn) {
       this->history.end()) {
     this->history.push_back(isbn);
   }
+  this->save();
   return true;
 }
 

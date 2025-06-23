@@ -1,0 +1,52 @@
+# --- Matemática ---
+# Cálculo: Volume 1
+978-6555584011
+# Cálculo: Volume 2
+978-6555584028
+# Pré-Cálculo - Uma Preparação para o Cálculo
+978-8521630692
+# Um Curso de Cálculo - Vol. 1: Volume 1
+978-8521635437
+# Um Curso de Cálculo - Volume 2
+978-8521635444
+# Um Curso de Cálculo - Volume 3
+978-8521635451
+# Um Curso de Cálculo - Volume 4
+978-8521635468
+# Geometria Analítica  Alfredo Steimbruch (Autor), Paulo Winterle (Autor)
+978-0074504093
+# Vetores e Geometria Analítica  Paulo Winterle (Autor)
+978-8543002392
+# Álgebra Linear com Aplicações
+978-8540701694
+# Álgebra Linear  Alfredo Steinbruch (Autor), Paulo Winterle (Autor)
+978-0074504123
+# Geometria Analítica: Um Tratamento Vetorial
+978-8587918918
+
+# --- Física ---
+# Fundamentos de Física - Mecânica - Volume 1
+978-8521637226
+# Fundamentos de Física - Gravitação, Ondas e Termodinâmica - Volume 2
+978-8521637233
+# Fundamentos de Física - Eletromagnetismo - Volume 3
+978-8521637240
+# Fundamentos de Física - Ótica e Física Moderna - Volume 4
+978-8521637257
+# Estática: Mecânica para Engenharia
+978-8543016245
+# Dinâmica: Mecânica para Engenharia
+978-8543016252
+
+# --- Física e Química ---
+# Resistência dos Materiais
+978-8543024998
+# Análise das Estruturas
+978-8581431277
+# Ciência e Engenharia de Materiais - Uma Introdução
+
+# --- Química ---
+# Princípios de Química: Questionando a Vida Moderna e o Meio Ambiente
+978-8582604618
+# Química: A Ciência Central
+978-8543005652

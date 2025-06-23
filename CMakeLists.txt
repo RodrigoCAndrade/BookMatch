@@ -21,7 +21,16 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(nlohmann_json)
 
 # 2. botan
-find_package(botan REQUIRED)
+if(WIN32)
+    find_package(botan REQUIRED)
+    set(BOTAN_LIB Botan::Botan-static)
+else()
+    find_library(BOTAN2_LIB botan-2)
+    if(NOT BOTAN2_LIB)
+        message(FATAL_ERROR "Botan 2 não encontrado. Instale o pacote libbotan-2-dev.")
+    endif()
+    set(BOTAN_LIB ${BOTAN2_LIB})
+endif()
 
 # 3. tabulate (header-only)
 FetchContent_Declare(
@@ -40,6 +49,7 @@ add_executable(BookMatch
     src/DataManager/DataManager.cpp
     src/User/User.cpp
     src/Utils/FormatAux.cpp
+    src/History/History.cpp
 )
 
 # Adiciona os diretórios 'src' para includes
@@ -47,10 +57,13 @@ target_include_directories(BookMatch PUBLIC
     src
     ${nlohmann_json_SOURCE_DIR}/include
 )
+if(NOT WIN32)
+    target_include_directories(BookMatch PUBLIC /usr/include/botan-2)
+endif()
 
 # Linka o executável com todas as bibliotecas
 target_link_libraries(BookMatch PRIVATE
     nlohmann_json::nlohmann_json
-    Botan::Botan-static
+    ${BOTAN_LIB}
     tabulate::tabulate
 )

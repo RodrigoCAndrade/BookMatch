@@ -89,11 +89,17 @@ bool Book::load() {
       }
     }
   }
+  this->createdDate = data.value("createdDate", "");
   // Carrega as tags
   tags.clear();
-  if (data.contains("tags") && data["tags"].is_array()) {
-    for (const auto& tag : data["tags"]) {
-      if (tag.is_string()) tags.push_back(tag.get<std::string>());
+  if (data.contains("tags")) {
+    if (data["tags"].is_array()) {
+      for (const auto& tag : data["tags"]) {
+        if (tag.is_string()) tags.push_back(tag.get<std::string>());
+      }
+    } else if (data["tags"].is_string()) {
+      std::string tagStr = data["tags"].get<std::string>();
+      if (!tagStr.empty()) tags.push_back(tagStr);
     }
   }
   return true;
@@ -109,6 +115,7 @@ bool Book::save() {
   allBooks[this->isbn] = {{"title", this->title},
                           {"author", this->author},
                           {"date", std::to_string(this->year)},
+                          {"createdDate", this->createdDate},
                           {"publisher", this->publisher},
                           {"description", this->description},
                           {"genre", this->genre},

@@ -34,6 +34,7 @@ private:
     vector<string> tags;
     float rating;
     DataManager &dataManager;
+    std::string createdDate;
 
 public:
     /**
@@ -88,6 +89,8 @@ public:
     vector<string> getTags();
     bool addTag(string &tag);
     bool removeTag(string &tag);
+    string getCreatedDate();
+    bool setCreatedDate();
     bool display();
 };
 

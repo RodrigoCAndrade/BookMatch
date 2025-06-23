@@ -1,9 +1,13 @@
 /**
- * @file: main.cpp
- * @author: Rodrigo Andrade
- * @date: 16 Jun 2025
+ * @file: Main.cpp
+ * @authors:
+ * Rodrigo de Carvalho Andrade - Matrícula: 9861
+ * Gustavo Prevelato Oliveira - Matrícula: 2137
+ * Leonardo da Silva Tabuenca - Matrícula: 390
+ * Iasmim Evelin Teodoro de Gois - 1051
+ * @date: 23 Jun 2025
  * @description: Classe principal para a aplicação BookMatch.
- * @version: 2.0
+ * @version: 2.1
  * @license: MIT
  * @language: C++
  * @github: https://github.com/RodrigoCAndrade/BookMatch
@@ -20,10 +24,12 @@
 #define byte win_byte_override
 #include <tabulate/table.hpp>
 #undef byte
+#include <set>
 #include <vector>
 
 #include "Book/Book.h"
 #include "DataManager/DataManager.h"
+#include "History/History.h"
 #include "User/User.h"
 #include "Utils/FormatAux.h"
 
@@ -74,6 +80,34 @@ void displayWelcomeMessage(const string& username);
  */
 void search(const string& query, unsigned int result_limit,
             DataManager& booksDataManager);
+
+/**
+ * @brief Exibe recomendações de livros para o usuário na home page.
+ * @param booksDataManager Gerenciador de dados dos livros.
+ * @param historyDataManager Gerenciador de histórico.
+ * @param currentUser Usuário atual.
+ */
+void homePage(DataManager& booksDataManager, DataManager& historyDataManager,
+              User& currentUser);
+
+/**
+ * @brief Exibe a lista de comandos disponíveis e suas utilizações.
+ */
+void displayHelp() {
+  cout << endl << BOLD << "Comandos disponíveis:" << RESET << endl;
+  cout << YELLOW << "* ajuda" << RESET
+       << " - Exibe a lista de comandos disponiveis." << endl;
+  cout << YELLOW << "* info <ISBN>" << RESET
+       << " - Exibe detalhes de um livro pelo ISBN e adiciona ao histórico."
+       << endl;
+  cout << YELLOW << "* busca <termo>" << RESET << " - Busca livros pelo título."
+       << endl;
+  cout << YELLOW << "* historico" << RESET
+       << " - Exibe o histórico de livros consultados." << endl;
+  cout << YELLOW << "* homepage" << RESET << " - Exibe recomendações de livros."
+       << endl;
+  cout << YELLOW << "* sair" << RESET << " - Encerra o programa." << endl;
+}
 
 /**
  * @brief Ponto de entrada principal da aplicação.
@@ -140,7 +174,10 @@ int main() {
     }
   }
 
+  // Exibindo mensagem de boas-vindas.
   displayWelcomeMessage(currentUser.getUsername());
+  // Exibindo recomendações iniciais
+  homePage(booksDataManager, historyDataManager, currentUser);
 
   // --- Manipulador de Comandos ---
   string userInput;
@@ -165,6 +202,9 @@ int main() {
     if (command == "sair" || command == "exit") {
       isRunning = false;
       continue;
+    } else if (command == "ajuda" || command == "help") {
+      displayHelp();
+      continue;
     } else if (command == "info") {
       if (args.empty()) {
         cout << RED << "Uso: info <ISBN>" << RESET << endl;
@@ -172,19 +212,46 @@ int main() {
       }
 
       Book book(args, booksDataManager);
+      string isbn = book.getIsbn();
       if (!book.exists()) {
-        cout << RED << "O livro com o ISBN '" << book.getIsbn()
-             << "' não foi encontrado." << RESET << endl;
+        cout << RED << "O livro com o ISBN '" << isbn << "' não foi encontrado."
+             << RESET << endl;
       } else {
         book.load();
+        History history(historyDataManager, currentUser);
+        history.add(isbn);
+
         cout << endl
-             << BOLD << "Detalhes do Livro (" << book.getIsbn() << ")" << RESET
-             << endl;
+             << BOLD << "Detalhes do Livro (" << isbn << ")" << RESET << endl;
         book.display();
       }
     } else if (command == "busca" || command == "buscar" ||
                command == "search" || command == "query") {
       search(args, 10, booksDataManager);
+    } else if (command == "historico" || command == "history") {
+      History history(historyDataManager, currentUser);
+      vector<string> userHistory = history.get();
+      if (userHistory.empty()) {
+        cout << RED << "Seu histórico está vazio." << RESET << endl;
+      } else {
+        cout << endl
+             << BOLD << "Histórico de Livros Consultados:" << RESET << endl;
+        for (size_t i = 0; i < userHistory.size(); ++i) {
+          Book book(userHistory[i], booksDataManager);
+          string displayTitle;
+          if (book.exists() && book.load()) {
+            displayTitle = book.getTitle();
+            if (displayTitle.empty()) displayTitle = "[...]";
+          } else {
+            displayTitle = "[...]";
+          }
+          cout << YELLOW << i + 1 << ". " << displayTitle
+               << " - ISBN: " << userHistory[i] << RESET << endl;
+        }
+      }
+    } else if (command == "homepage" || command == "casa" ||
+               command == "recomendacoes" || command == "recommendations") {
+      homePage(booksDataManager, historyDataManager, currentUser);
     } else {
       cout << RED << "Comando '" << command << "' desconhecido." << RESET
            << endl;
@@ -314,7 +381,7 @@ void search(const string& query, unsigned int result_limit,
     double sim = jaroWinkler(queryNorm, titleNorm);
 
     // Limite de similaridade
-    if (sim <= 0.65) continue;
+    if (sim <= 0.67) continue;
     results.emplace_back(sim, isbn);
   }
 
@@ -367,4 +434,98 @@ void search(const string& query, unsigned int result_limit,
       .column_separator("│");
 
   cout << table << endl;
+}
+
+void homePage(DataManager& booksDataManager, DataManager& historyDataManager,
+              User& currentUser) {
+  History history(historyDataManager, currentUser);
+  vector<string> userHistory = history.get();
+  json books = booksDataManager.load();
+  vector<pair<string, string>> recommendations;  // (ISBN, Título)
+
+  set<string> userTags;
+  size_t lastN = min(userHistory.size(), size_t(3));
+  // Coleta tags dos últimos N livros do histórico (mais recentes)
+  for (size_t idx = 0; idx < lastN; ++idx) {
+    size_t i = userHistory.size() - 1 - idx;
+    Book book(userHistory[i], booksDataManager);
+    if (book.exists() && book.load()) {
+      vector<string> tags = book.getTags();
+      for (const auto& tag : tags) {
+        if (!tag.empty()) userTags.insert(tag);
+      }
+    }
+  }
+
+  // Mapeia ISBN para (qtd_tags_em_comum, createdDate)
+  vector<tuple<int, string, string>>
+      candidates;  // (qtd_tags, createdDate, ISBN)
+  for (auto it = books.begin(); it != books.end(); ++it) {
+    string isbn = it.key();
+    if (find(userHistory.begin(), userHistory.end(), isbn) != userHistory.end())
+      continue;
+    set<string> bookTags;
+    if (it.value().contains("tags")) {
+      if (it.value()["tags"].is_array()) {
+        for (const auto& tag : it.value()["tags"]) {
+          if (tag.is_string()) bookTags.insert(tag.get<string>());
+        }
+      } else if (it.value()["tags"].is_string()) {
+        string tagStr = it.value()["tags"].get<string>();
+        if (!tagStr.empty()) bookTags.insert(tagStr);
+      }
+    }
+    int common = 0;
+    for (const auto& tag : bookTags) {
+      if (!tag.empty() && userTags.count(tag)) ++common;
+    }
+    if (!userTags.empty() && common > 0) {
+      string createdDate = it.value().value("createdDate", "");
+      candidates.emplace_back(common, createdDate, isbn);
+    }
+  }
+
+  // Ordena por qtd_tags_em_comum (desc), depois por createdDate (desc)
+  sort(candidates.begin(), candidates.end(), [](const auto& a, const auto& b) {
+    if (get<0>(a) != get<0>(b)) return get<0>(a) > get<0>(b);
+    return get<1>(a) > get<1>(b);
+  });
+
+  for (size_t i = 0; i < min(candidates.size(), size_t(3)); ++i) {
+    string isbn = get<2>(candidates[i]);
+    string title = books[isbn].value("title", "[...]");
+    recommendations.emplace_back(isbn, title);
+  }
+
+  // Se não houver recomendações por tags, recomenda os mais recentes
+  if (recommendations.empty()) {
+    vector<pair<string, string>> bookDates;  // (ISBN, createdDate)
+    for (auto it = books.begin(); it != books.end(); ++it) {
+      string isbn = it.key();
+      if (!userHistory.empty() && find(userHistory.begin(), userHistory.end(),
+                                       isbn) != userHistory.end())
+        continue;
+      string createdDate = it.value().value("createdDate", "");
+      bookDates.emplace_back(isbn, createdDate);
+    }
+    sort(bookDates.begin(), bookDates.end(), [](const auto& a, const auto& b) {
+      return a.second > b.second;  // Mais recente primeiro
+    });
+    for (size_t i = 0; i < min(bookDates.size(), size_t(3)); ++i) {
+      string isbn = bookDates[i].first;
+      string title = books[isbn].value("title", "[...]");
+      recommendations.emplace_back(isbn, title);
+    }
+  }
+
+  cout << endl << BOLD << "Recomendações para você:" << RESET << endl;
+  if (recommendations.empty()) {
+    cout << YELLOW << "Nenhuma recomendação disponível no momento." << RESET
+         << endl;
+  } else {
+    for (size_t i = 0; i < recommendations.size(); ++i) {
+      cout << GREEN << i + 1 << ". " << recommendations[i].second
+           << " - ISBN: " << recommendations[i].first << RESET << endl;
+    }
+  }
 }

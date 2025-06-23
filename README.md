@@ -50,6 +50,13 @@ O projeto aplica conceitos fundamentais do curso (estruturas de dados, condiçõ
 - Tendências e popularidade
 - Filtros personalizados
 
+<br/>
+
+<div align="center">
+  <p><strong>🔧 Diagrama do Projeto</strong></p>
+  <img src="assets/Digrama.png" alt="Diagrama"/>
+</div>
+
 ## 🔒 Segurança
 
 - Senhas criptografadas com SHA-512
@@ -73,8 +80,7 @@ O projeto aplica conceitos fundamentais do curso (estruturas de dados, condiçõ
 ### Pré-requisitos
 
 ```bash
-sudo apt update
-sudo apt install build-essential cmake libbotan-2-dev
+sudo apt update && sudo apt install -y build-essential cmake libbotan-2-dev
 ```
 
 ### Compilar
